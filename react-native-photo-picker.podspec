@@ -15,5 +15,9 @@ Pod::Spec.new do |s|
 
   s.source_files = "ios/**/*.{h,m,mm}"
 
+  s.dependency "HXPhotoPicker", "~> 3.2.3"
+  s.dependency "HXPhotoPicker/SDWebImage", "~> 3.2.3"
+  s.dependency "HXPhotoPicker/YYWebImage", "~> 3.2.3"
+   
   s.dependency "React-Core"
 end

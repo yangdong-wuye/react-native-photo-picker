@@ -1,4 +1,4 @@
-package com.reactnativephotopicker;
+package com.wuye;
 
 import androidx.annotation.NonNull;
 
