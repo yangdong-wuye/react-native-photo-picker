@@ -14,8 +14,7 @@ npm install react-native-photo-picker
 import PhotoPicker from "react-native-photo-picker";
 
 // ...
-
-const result = await PhotoPicker.multiply(3, 7);
+const result = await PhotoPicker.openPicker({ maxNum: 3 });
 ```
 
 ## Contributing
