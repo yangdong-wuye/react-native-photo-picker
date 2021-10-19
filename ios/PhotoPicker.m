@@ -64,6 +64,8 @@ RCT_REMAP_METHOD(openPicker,
     
     // 裁剪设置
     _manager.configuration.photoCanEdit = [options sy_boolForKey:@"photoCanEdit"];
+    // 拍照完成后是否进入编辑页面
+    _manager.configuration.cameraPhotoJumpEdit = [options sy_boolForKey:@"photoCanEdit"];
     // 只要裁剪功能
     _manager.configuration.photoEditConfigur.onlyCliping = YES;
     
