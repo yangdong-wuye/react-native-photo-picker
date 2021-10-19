@@ -9,7 +9,6 @@ import android.util.Base64;
 
 import androidx.annotation.NonNull;
 
-import com.blankj.utilcode.util.UriUtils;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
