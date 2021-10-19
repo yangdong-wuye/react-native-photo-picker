@@ -4,10 +4,10 @@ import { StyleSheet, View, Text } from 'react-native';
 import PhotoPicker from 'react-native-photo-picker';
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
+  const [result] = React.useState<number | undefined>();
 
   React.useEffect(() => {
-    PhotoPicker.multiply(3, 7).then(setResult);
+    PhotoPicker.openPicker({ maxNum: 9 });
   }, []);
 
   return (
