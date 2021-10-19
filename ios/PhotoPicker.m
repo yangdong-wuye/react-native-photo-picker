@@ -35,6 +35,7 @@ RCT_REMAP_METHOD(openPicker,
     _manager.configuration.cameraPhotoJumpEdit = YES;
     _manager.configuration.creationDateSort = YES;
     _manager.configuration.reverseDate = NO;
+    _manager.configuration.videoCodecKey = @"avc1";
     _manager.configuration.maxNum = [options sy_integerForKey:@"maxNum"];
     NSInteger videoMaxNum = type == HXPhotoManagerSelectedTypePhoto ? 0 : [options sy_integerForKey:@"videoMaxNum"];
     _manager.configuration.photoMaxNum = [options sy_integerForKey:@"maxNum"] - videoMaxNum;

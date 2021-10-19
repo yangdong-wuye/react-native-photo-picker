@@ -70,4 +70,5 @@ dependencies {
     api "androidx.camera:camera-camera2:1.1.0-alpha04"
     implementation "androidx.transition:transition:1.4.1"
     implementation "androidx.camera:camera-lifecycle:1.1.0-alpha04"
+    implementation "com.blankj:utilcodex:1.30.6"
 }

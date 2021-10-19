@@ -9,6 +9,7 @@ import android.util.Base64;
 
 import androidx.annotation.NonNull;
 
+import com.blankj.utilcode.util.UriUtils;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.FileNameMap;
 import java.net.URLConnection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -83,7 +85,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
 
         PictureSelector.create(this.getCurrentActivity())
                 .openGallery(type == 0 ? PictureMimeType.ofImage() : type == 1 ? PictureMimeType.ofVideo() : PictureMimeType.ofAll())
-                .setPictureUIStyle(PictureSelectorUIStyle.ofSelectNumberStyle())
+                .setPictureUIStyle(PictureSelectorUIStyle.ofNewStyle())
                 .maxSelectNum(maxNum) // 最大图片选择数量
                 .minSelectNum(1) // 最小选择数量
                 .maxVideoSelectNum(videoMaxNum) // 视频最大选择数量，如果没有单独设置的需求则可以不设置，同用maxSelectNum字段
@@ -125,10 +127,10 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                             String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getPath();
                             boolean isOriginal = !media.isCompressed() && !media.isCut();
 
-                            File file = new File(path);
+                            File file = UriUtils.uri2File(Uri.parse(path));
                             Uri uri = Uri.fromFile(file);
 
-                            data.putString("path", path);
+                            data.putString("path", file.getPath());
                             data.putString("uri", uri.toString());
                             data.putString("fileName", file.getName());
                             data.putInt("width", media.isCut() ? media.getCropImageWidth() : media.getWidth());
@@ -141,7 +143,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                             data.putBoolean("isVideo", PictureMimeType.isHasVideo(media.getMimeType()));
 
                             if (PictureMimeType.isHasVideo(media.getMimeType())) {
-                                File coverFile = getVideoCover(path);
+                                File coverFile = getVideoCover(file.getPath());
                                 if (file != null) {
                                     data.putString("coverFileName", coverFile.getName());
                                     data.putString("coverPath", coverFile.getPath());
