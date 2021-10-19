@@ -1,6 +1,6 @@
 {
   "name": "@wuye/react-native-photo-picker",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "react native photo picker",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
