@@ -124,10 +124,10 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                         WritableArray list = Arguments.createArray();
                         for (LocalMedia media : result) {
                             WritableMap data = Arguments.createMap();
-                            String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getPath();
+                            String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getRealPath();
                             boolean isOriginal = !media.isCompressed() && !media.isCut();
 
-                            File file = UriUtils.uri2File(Uri.parse(path));
+                            File file = new File(path);
                             Uri uri = Uri.fromFile(file);
 
                             data.putString("path", file.getPath());
