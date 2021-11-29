@@ -109,7 +109,8 @@ RCT_REMAP_METHOD(openPicker,
                 }
                 file[@"duration"] = @(model.videoDuration * 1000);
                 file[@"mime"] = [self getMimeType:url.path];
-                file[@"isVideo"] = @(mediaType == HXPhotoModelMediaSubTypeVideo);
+                BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
+                file[@"isVideo"] = @(isVideo);
                 if ([options sy_boolForKey:@"includeBase64"] && model.subType == HXPhotoModelMediaSubTypePhoto) {
                     NSData *writeData = model.photoFormat == HXPhotoModelFormatPNG ? UIImagePNGRepresentation(model.previewPhoto) : UIImageJPEGRepresentation(model.previewPhoto, 1);
                     file[@"data"] = [NSString stringWithFormat:@"%@", [writeData base64EncodedStringWithOptions:0]];
