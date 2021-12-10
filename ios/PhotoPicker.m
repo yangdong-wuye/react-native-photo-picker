@@ -75,12 +75,18 @@ RCT_REMAP_METHOD(openPicker,
         _manager.configuration.photoEditConfigur.isRoundCliping = true;
     } else {
         _manager.configuration.photoEditConfigur.isRoundCliping = false;
-        _manager.configuration.photoEditConfigur.customAspectRatio = CGSizeMake([options sy_integerForKey:@"cropWidthRatio"], [options sy_integerForKey:@"cropHeightRatio"]);
+        NSInteger cropWidthRatio = [options sy_integerForKey:@"cropWidthRatio"];
+        NSInteger cropHeightRatio = [options sy_integerForKey:@"cropHeightRatio"];
+        if (cropWidthRatio <= 0 || cropHeightRatio <= 0) {
+            _manager.configuration.photoEditConfigur.aspectRatio = HXPhotoEditAspectRatioType_Original;
+        } else {
+            _manager.configuration.photoEditConfigur.customAspectRatio = CGSizeMake(cropWidthRatio, cropHeightRatio);
+        }
+        
         if ([options sy_boolForKey:@"customCropRatio"]) {
             _manager.configuration.photoEditConfigur.aspectRatio = HXPhotoEditAspectRatioType_None;
         } else {
             _manager.configuration.photoEditConfigur.aspectRatio = HXPhotoEditAspectRatioType_Custom;
-            
         }
     }
     
@@ -183,7 +189,7 @@ RCT_REMAP_METHOD(clean,
     return response.MIMEType;
 }
 
-/// 创建SyanImageCaches缓存目录
+/// 创建PhotoPickerModule缓存目录
 - (BOOL)createDir {
     NSString * path = [NSString stringWithFormat:@"%@PhotoPickerModule", NSTemporaryDirectory()];;
     NSFileManager *fileManager = [NSFileManager defaultManager];

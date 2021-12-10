@@ -137,8 +137,8 @@ const PhotoPciker = {
 
       isRoundCliping: false,
 
-      cropWidthRatio: 1,
-      cropHeightRatio: 1,
+      cropWidthRatio: 0,
+      cropHeightRatio: 0,
 
       customCropRatio: false,
 
