@@ -92,6 +92,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         cropOptions.setHideBottomControls(false); // 是否显示底部工具栏
         cropOptions.setShowCropFrame(true); // 是否显示裁剪框
         cropOptions.setShowCropGrid(true); // 是否显示裁剪框网格
+        cropOptions.setFreeStyleCropEnabled(customCropRatio);
         cropOptions.setFreestyleCropMode(customCropRatio ? OverlayView.FREESTYLE_CROP_MODE_ENABLE : OverlayView.FREESTYLE_CROP_MODE_DISABLE);// 裁剪框拖动模式
         cropOptions.setCropDragSmoothToCenter(true); // 裁剪框拖动时图片自动跟随居中
 
