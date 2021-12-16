@@ -14,6 +14,7 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
@@ -37,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.FileNameMap;
 import java.net.URLConnection;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -80,6 +82,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         int cropHeightRatio = options.getInt("cropHeightRatio");
         boolean customCropRatio = options.getBoolean("customCropRatio");
         boolean includeBase64 = options.getBoolean("includeBase64");
+        ReadableArray mimeTypeConditions = options.getArray("mimeTypeConditions");
 
         UCrop.Options cropOptions = new UCrop.Options();
         if (cropWidthRatio <= 0 || cropHeightRatio <= 0) {
@@ -99,6 +102,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         int[] pictureMimeType = {PictureMimeType.ofImage(), PictureMimeType.ofVideo(), PictureMimeType.ofAll()};
         PictureSelector.create(this.getCurrentActivity())
                 .openGallery(pictureMimeType[type])
+                .queryMimeTypeConditions(mimeTypeConditions.toArrayList().toArray(new String[]{}))
                 .setPictureUIStyle(PictureSelectorUIStyle.ofNewStyle())
                 .maxSelectNum(maxNum) // 最大图片选择数量
                 .minSelectNum(1) // 最小选择数量

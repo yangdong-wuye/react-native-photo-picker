@@ -88,7 +88,15 @@ export interface PhotoPickerOptions {
    */
   // 视频录制质量 0 = 极低 1 = 高清
   videoQuality?: number;
-
+  // 可显示的视频类型
+  mimeTypeConditions?: (
+    | 'image/png'
+    | 'image/jpeg'
+    | 'image/jpg'
+    | 'image/bmp'
+    | 'image/gif'
+    | 'image/webp'
+  )[];
   /***
    * 仅支持IOS
    */
@@ -143,6 +151,8 @@ const PhotoPciker = {
       customCropRatio: false,
 
       includeBase64: false,
+
+      mimeTypeConditions: [],
     };
 
     return PhotoPickerModule.openPicker({ ...defaultOptions, ...options });
