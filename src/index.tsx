@@ -68,6 +68,21 @@ export interface PhotoPickerOptions {
   // 单选模式下选择图片时是否直接跳转到编辑界面
   singleJumpEdit?: boolean;
 
+  /**
+   * 是否压缩图片
+   */
+  isCompress?: true;
+
+  /**
+   * 小于多少kb的图片不用压缩
+   */
+  minimumCompressSize?: number;
+
+  /**
+   * 压缩质量
+   */
+  compressQuality?: number;
+
   // 裁剪
   // 是否圆形裁剪框
   isRoundCliping?: boolean;
@@ -136,6 +151,10 @@ const PhotoPciker = {
       videoMinimumDuration: 3,
       deleteTemporaryPhoto: true,
       saveSystemAlbum: false,
+
+      isCompress: true,
+      minimumCompressSize: 200,
+      compressQuality: 30,
 
       videoQuality: 0,
       videoCanEdit: false,

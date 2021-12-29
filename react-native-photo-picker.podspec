@@ -18,6 +18,7 @@ Pod::Spec.new do |s|
   s.dependency "HXPhotoPicker", "~> 3.2.3"
   s.dependency "HXPhotoPicker/SDWebImage", "~> 3.2.3"
   s.dependency "HXPhotoPicker/YYWebImage", "~> 3.2.3"
+  s.dependency "MBProgressHUD", "~> 1.2.0"
    
   s.dependency "React-Core"
 end

@@ -5,6 +5,9 @@
 #import <React/RCTUtils.h>
 #import <MobileCoreServices/MobileCoreServices.h>
 #import "HXPhotoPicker.h"
+#import "MBProgressHUD.h"
+
+typedef void (^ ImageSuccessBlock)(UIImage * _Nullable image, HXPhotoModel * _Nullable model, NSDictionary * _Nullable info);
 
 @interface PhotoPickerModule ()
 
@@ -99,20 +102,46 @@ RCT_REMAP_METHOD(openPicker,
         [allList enumerateObjectsUsingBlock:^(HXPhotoModel*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
             NSMutableDictionary *file  = [NSMutableDictionary dictionary];
             [obj getAssetURLWithVideoPresetName:nil success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
+                if (obj.subType == HXPhotoModelMediaSubTypePhoto) {
+                    NSData *writeData = [NSData dataWithContentsOfURL:url];
+                    if ([options sy_boolForKey:@"isCompress"]) {
+                        UIImage *img = [UIImage imageWithData:writeData];
+                        NSInteger compressQuality = [options sy_integerForKey:@"compressQuality"];
+                        CGFloat quality = (CGFloat)compressQuality / 100;
+                        writeData = [self smartCompressImage:img minimumCompressSize:[options sy_integerForKey:@"minimumCompressSize"] compressQuality:quality];
+                    }
+                    UIImage *image = [UIImage imageWithData:writeData];
+                    
+                    NSString *suffix = @"jpeg";
+                    if (UIImagePNGRepresentation(image)) {
+                        //返回为png图像。
+                        writeData = UIImagePNGRepresentation(image);
+                        suffix = @"png";
+                    }else {
+                        //返回为JPEG图像。
+                        writeData = UIImageJPEGRepresentation(image, 1);
+                        suffix = @"jpeg";
+                    }
+                    
+                    [self createDir];
+                    NSString *fileName = [[NSString hx_fileName] stringByAppendingString:[NSString stringWithFormat:@".%@",suffix]];
+                    NSString *filePath = [NSTemporaryDirectory() stringByAppendingPathComponent:fileName];;
+                    
+                    [writeData writeToFile:filePath atomically:YES];
+                    url = [NSURL fileURLWithPath:filePath];
+                    model.imageURL = url;
+                    model.previewPhoto = image;
+                }
+                
                 file[@"path"] = url.path;
                 file[@"uri"] = url.absoluteString;
-                if (obj.type == HXPhotoModelMediaTypeCameraPhoto || obj.type == HXPhotoModelMediaTypeCameraVideo) {
-                    NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfItemAtPath:[url path] error:nil];
-                    file[@"fileName"] = [[url path] lastPathComponent];
-                    file[@"width"] = @(model.previewPhoto.size.width);
-                    file[@"height"] = @(model.previewPhoto.size.height);
-                    file[@"size"] = [dictionary objectForKey:NSFileSize];
-                } else {
-                    file[@"fileName"] = [model.asset valueForKey:@"filename"];
-                    file[@"width"] = @(model.asset.pixelWidth);
-                    file[@"height"] = @(model.asset.pixelHeight);
-                    file[@"size"] = @(model.assetByte);
-                }
+                
+                NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfItemAtPath:[url path] error:nil];
+                file[@"fileName"] = [[url path] lastPathComponent];
+                file[@"width"] = @(model.previewPhoto.size.width);
+                file[@"height"] = @(model.previewPhoto.size.height);
+                file[@"size"] = [dictionary objectForKey:NSFileSize];
+                
                 file[@"duration"] = @(model.videoDuration * 1000);
                 file[@"mime"] = [self getMimeType:url.path];
                 BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
@@ -151,6 +180,7 @@ RCT_REMAP_METHOD(clean,
     
     resolve(nil);
 }
+
 
 /// 处理裁剪图片数据
 - (NSDictionary *)handleCoverImage:(UIImage *)image compressQuality:(CGFloat)compressQuality {
@@ -201,6 +231,57 @@ RCT_REMAP_METHOD(clean,
     } else {
         return NO;
     };
+}
+
+- (NSData *)smartCompressImage:(UIImage *)sourceImage minimumCompressSize:(NSInteger)minimumCompressSize compressQuality:(CGFloat) compressQuality {
+    //进行图像尺寸的压缩
+    CGSize imageSize = sourceImage.size;//取出要压缩的image尺寸
+    CGFloat width = imageSize.width;    //图片宽度
+    CGFloat height = imageSize.height;  //图片高度
+    //1.宽高大于1280(宽高比不按照2来算，按照1来算)
+    if (width>1280||height>1280) {
+        if (width>height) {
+            CGFloat scale = height/width;
+            width = 1280;
+            height = width*scale;
+        }else{
+            CGFloat scale = width/height;
+            height = 1280;
+            width = height*scale;
+        }
+    //2.宽大于1280高小于1280
+    }else if(width>1280||height<1280){
+        CGFloat scale = height/width;
+        width = 1280;
+        height = width*scale;
+    //3.宽小于1280高大于1280
+    }else if(width<1280||height>1280){
+        CGFloat scale = width/height;
+        height = 1280;
+        width = height*scale;
+    //4.宽高都小于1280
+    }else{
+    }
+    UIGraphicsBeginImageContext(CGSizeMake(width, height));
+    [sourceImage drawInRect:CGRectMake(0,0,width,height)];
+    UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    //进行图像的画面质量压缩
+    NSData *data=UIImageJPEGRepresentation(newImage, 1.0);
+    if (data.length > minimumCompressSize*1024) {
+        if (data.length > 1024*1024) {
+            //1M以及以上
+            data=UIImageJPEGRepresentation(newImage, compressQuality);
+        }else if (data.length > 512*1024) {
+            //0.5M-1M
+            data=UIImageJPEGRepresentation(newImage, 0.6);
+        }else if (data.length > 200*1024) {
+            //0.25M-0.5M
+            data=UIImageJPEGRepresentation(newImage, 0.9);
+        }
+    }
+    return data;
 }
 
 

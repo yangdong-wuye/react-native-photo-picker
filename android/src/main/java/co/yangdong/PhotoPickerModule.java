@@ -73,6 +73,9 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         int videoMaximumSelectDuration = options.getInt("videoMaximumSelectDuration"); // 视频最大选择时间
         int videoMinimumSelectDuration = options.getInt("videoMinimumSelectDuration"); // 视频最小选择时间
         int videoQuality = options.getInt("videoQuality"); // 视频录制质量
+        boolean isCompress = options.getBoolean("isCompress"); // 是否压缩
+        int minimumCompressSize = options.getInt("minimumCompressSize"); // 小于多少kb的图片不压缩
+        int compressQuality = options.getInt("compressQuality"); // 图片压缩质量
         boolean videoCanEdit = options.getBoolean("videoCanEdit"); // 视频是否可以编辑（TODO）
         boolean photoCanEdit = options.getBoolean("photoCanEdit"); // 照片是否可以编辑
         boolean singleSelected = options.getBoolean("singleSelected");
@@ -118,6 +121,9 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                 .videoMaxSecond(videoMaximumSelectDuration) // 查询多少秒以内的视频
                 .videoMinSecond(videoMinimumSelectDuration) // 查询多少秒以外的视频
                 .videoQuality(videoQuality)
+                .isCompress(isCompress) // 是否压缩
+                .compressQuality(compressQuality) // 图片压缩质量
+                .minimumCompressSize(minimumCompressSize) // 小于多少kb的图片不压缩
                 .selectionMode(singleSelected ? PictureConfig.SINGLE : PictureConfig.MULTIPLE) // 多选 or 单选
                 .isSingleDirectReturn(singleJumpEdit) // 单选模式下是否直接返回，PictureConfig.SINGLE模式下有效
                 .isPreviewImage(true) // 是否可预览图片
