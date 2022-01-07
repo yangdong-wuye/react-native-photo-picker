@@ -71,7 +71,7 @@ export interface PhotoPickerOptions {
   /**
    * 是否压缩图片
    */
-  isCompress?: true;
+  isCompress?: boolean;
 
   /**
    * 小于多少kb的图片不用压缩
