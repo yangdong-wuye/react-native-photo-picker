@@ -5,6 +5,8 @@
 #import <React/RCTBridgeModule.h>
 #endif
 #import <UIKit/UIKit.h>
-@interface PhotoPickerModule : NSObject <RCTBridgeModule>
+#import "HXPhotoPicker.h"
+#import "SVProgressHUD.h"
+@interface PhotoPickerModule : NSObject <HXCustomNavigationControllerDelegate, RCTBridgeModule>
 
 @end
