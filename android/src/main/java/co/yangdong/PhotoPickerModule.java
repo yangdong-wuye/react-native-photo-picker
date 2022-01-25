@@ -1,8 +1,11 @@
 package co.yangdong;
 
+import android.app.Activity;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.util.Base64;
 
@@ -38,7 +41,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.FileNameMap;
 import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -108,9 +110,9 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                 .queryMimeTypeConditions(mimeTypeConditions.toArrayList().toArray(new String[]{}))
                 .setPictureUIStyle(PictureSelectorUIStyle.ofNewStyle())
                 .maxSelectNum(maxNum) // 最大图片选择数量
-                .minSelectNum(1) // 最小选择数量
+                .minSelectNum(0) // 最小选择数量
                 .maxVideoSelectNum(videoMaxNum) // 视频最大选择数量，如果没有单独设置的需求则可以不设置，同用maxSelectNum字段
-                .minVideoSelectNum(1) // 视频最小选择数量，如果没有单独设置的需求则可以不设置，同用minSelectNum字段
+                .minVideoSelectNum(0) // 视频最小选择数量，如果没有单独设置的需求则可以不设置，同用minSelectNum字段
                 .isCamera(openCamera) // 是否显示拍照按钮
                 .isGif(lookGifPhoto) // 是否显示gif
                 .isWithVideoImage(selectTogether) // 图片和视频是否可以同选,只在ofAll模式下有效
@@ -143,45 +145,59 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                 .forResult(new OnResultCallbackListener<LocalMedia>() {
                     @Override
                     public void onResult(List<LocalMedia> result) {
-                        WritableArray list = Arguments.createArray();
-                        for (LocalMedia media : result) {
-                            WritableMap data = Arguments.createMap();
-                            String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getRealPath();
-                            boolean isOriginal = !media.isCompressed() && !media.isCut();
+                        try {
+                            WritableArray list = Arguments.createArray();
+                            for (LocalMedia media : result) {
+                                WritableMap data = Arguments.createMap();
+                                String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getRealPath();
+                                boolean isOriginal = !media.isCompressed() && !media.isCut();
+                                File file = new File(path);
+                                Uri uri = Uri.fromFile(file);
 
-                            File file = new File(path);
-                            Uri uri = Uri.fromFile(file);
+                                String mime = isOriginal ? media.getMimeType() : getMimeType(file);
+                                int width =  media.isCut() ? media.getCropImageWidth() : media.getWidth();
+                                int height = media.isCut() ? media.getCropImageHeight() : media.getHeight();
 
-                            data.putString("path", file.getPath());
-                            data.putString("uri", uri.toString());
-                            data.putString("fileName", file.getName());
-                            data.putInt("width", media.isCut() ? media.getCropImageWidth() : media.getWidth());
-                            data.putInt("height", media.isCut() ? media.getCropImageHeight() : media.getHeight());
-                            data.putDouble("size", file.length());
-                            data.putDouble("duration", media.getDuration());
-                            data.putString("mime", isOriginal ? media.getMimeType() : getMimeType(file));
-                            data.putString("coverUri", uri.toString());
+                                data.putString("path", file.getPath());
+                                data.putString("uri", uri.toString());
+                                data.putString("fileName", file.getName());
+                                data.putInt("width", width);
+                                data.putInt("height", height);
+                                data.putDouble("size", file.length());
+                                data.putDouble("duration", media.getDuration());
+                                data.putString("mime", mime);
+                                data.putBoolean("isVideo", PictureMimeType.isHasVideo(media.getMimeType()));
 
-                            data.putBoolean("isVideo", PictureMimeType.isHasVideo(media.getMimeType()));
-
-                            if (PictureMimeType.isHasVideo(media.getMimeType())) {
-                                File coverFile = getVideoCover(file.getPath());
-                                if (file != null) {
+                                if (PictureMimeType.isHasImage(media.getMimeType())) {
+                                    File coverFile = getImageCover(file.getPath(), width, height);
                                     data.putString("coverFileName", coverFile.getName());
                                     data.putString("coverPath", coverFile.getPath());
                                     data.putString("coverUri", Uri.fromFile(coverFile).toString());
                                     data.putString("coverMime", getMimeType(coverFile));
+                                    data.putDouble("coverSize", coverFile.length());
                                 }
+
+                                if (PictureMimeType.isHasVideo(media.getMimeType())) {
+                                    File coverFile = getVideoCover(file.getPath());
+                                    data.putString("coverFileName", coverFile.getName());
+                                    data.putString("coverPath", coverFile.getPath());
+                                    data.putString("coverUri", Uri.fromFile(coverFile).toString());
+                                    data.putString("coverMime", getMimeType(coverFile));
+                                    data.putDouble("coverSize", coverFile.length());
+                                }
+
+                                if (includeBase64) {
+                                    data.putString("data", getBase64StringFromFilePath(path));
+                                }
+
+                                list.pushMap(data);
                             }
 
-                            if (includeBase64) {
-                                data.putString("data", getBase64StringFromFilePath(path));
-                            }
-
-                            list.pushMap(data);
+                            promise.resolve(list);
+                        } catch (Exception ex) {
+                            promise.reject(ex);
                         }
 
-                        promise.resolve(list);
                     }
 
                     @Override
@@ -194,7 +210,10 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void clean() {
-        PictureCacheManager.deleteAllCacheDirFile(getCurrentActivity());
+        Activity activity = getCurrentActivity();
+        if (activity != null) {
+            PictureCacheManager.deleteAllCacheDirFile(activity);
+        }
     }
 
     private String getBase64StringFromFilePath(String absoluteFilePath) {
@@ -221,25 +240,40 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         return Base64.encodeToString(bytes, Base64.NO_WRAP);
     }
 
-    private File getVideoCover(String videoPath) {
-        try {
-            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-            retriever.setDataSource(videoPath);
-            Bitmap bitmap = retriever.getFrameAtTime();
-            final String uuid = "thumb-" + UUID.randomUUID().toString();
-            final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".jpg";
-            final File file = new File(localThumb);
-            FileOutputStream outStream = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 30, outStream);
-            outStream.close();
-            retriever.release();
+    private File getImageCover(String imagePath, int width, int height) throws IOException {
+        double ratio = (double) width / (double) height;
+        int thumbWidth = Math.min(width, 200);
+        int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
+        Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(imagePath), thumbWidth, thumbHeight);
+        final String uuid = "thumb-" + UUID.randomUUID().toString();
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".jpg";
+        final File file = new File(localThumb);
+        FileOutputStream outStream = new FileOutputStream(file);
+        thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outStream);
+        outStream.close();
 
-            return file;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        return file;
+    }
 
-        return null;
+    private File getVideoCover(String videoPath) throws IOException {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(videoPath);
+        Bitmap bitmap = retriever.getFrameAtTime();
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        double ratio = (double) width / (double) height;
+        int thumbWidth = Math.min(width, 200);
+        int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
+        Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(bitmap, thumbWidth, thumbHeight);
+        final String uuid = "thumb-" + UUID.randomUUID().toString();
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".jpg";
+        final File file = new File(localThumb);
+        FileOutputStream outStream = new FileOutputStream(file);
+        thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outStream);
+        outStream.close();
+        retriever.release();
+
+        return file;
     }
 
     private String getMimeType(File file) {

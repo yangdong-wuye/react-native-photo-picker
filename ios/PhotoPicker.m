@@ -4,6 +4,7 @@
 #import <AssetsLibrary/AssetsLibrary.h>
 #import <React/RCTUtils.h>
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <math.h>
 
 
 typedef void (^ ImageSuccessBlock)(UIImage * _Nullable image, HXPhotoModel * _Nullable model, NSDictionary * _Nullable info);
@@ -112,79 +113,6 @@ RCT_REMAP_METHOD(openPicker,
 	HXCustomNavigationController *nav = [[HXCustomNavigationController alloc] initWithManager:_manager delegate:self];
 	UIViewController *rootViewController = RCTPresentedViewController();
 	[rootViewController presentViewController:nav animated:YES completion:nil];
-    
-//    [[self topViewController] hx_presentSelectPhotoControllerWithManager: _manager didDone:^(NSArray<HXPhotoModel *> *allList, NSArray<HXPhotoModel *> *photoList, NSArray<HXPhotoModel *> *videoList, BOOL isOriginal, UIViewController *viewController, HXPhotoManager *manager) {
-//        NSMutableArray *files = [NSMutableArray array];
-//        [allList enumerateObjectsUsingBlock:^(HXPhotoModel*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-//            NSMutableDictionary *file  = [NSMutableDictionary dictionary];
-//            [obj getAssetURLWithVideoPresetName:nil success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
-//                if (obj.subType == HXPhotoModelMediaSubTypePhoto) {
-//                    NSData *writeData = [NSData dataWithContentsOfURL:url];
-//                    if ([options sy_boolForKey:@"isCompress"]) {
-//                        UIImage *img = [UIImage imageWithData:writeData];
-//                        NSInteger compressQuality = [options sy_integerForKey:@"compressQuality"];
-//                        CGFloat quality = (CGFloat)compressQuality / 100;
-//                        writeData = [self smartCompressImage:img minimumCompressSize:[options sy_integerForKey:@"minimumCompressSize"] compressQuality:quality];
-//                    }
-//                    UIImage *image = [UIImage imageWithData:writeData];
-//
-//                    NSString *suffix = @"jpeg";
-//                    if (UIImagePNGRepresentation(image)) {
-//                        //返回为png图像。
-//                        writeData = UIImagePNGRepresentation(image);
-//                        suffix = @"png";
-//                    }else {
-//                        //返回为JPEG图像。
-//                        writeData = UIImageJPEGRepresentation(image, 1);
-//                        suffix = @"jpeg";
-//                    }
-//
-//                    [self createDir];
-//                    NSString *fileName = [[NSString hx_fileName] stringByAppendingString:[NSString stringWithFormat:@".%@",suffix]];
-//                    NSString *filePath = [NSTemporaryDirectory() stringByAppendingPathComponent:fileName];;
-//
-//                    [writeData writeToFile:filePath atomically:YES];
-//                    url = [NSURL fileURLWithPath:filePath];
-//                    model.imageURL = url;
-//                    model.previewPhoto = image;
-//                }
-//
-//                file[@"path"] = url.path;
-//                file[@"uri"] = url.absoluteString;
-//
-//                NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfItemAtPath:[url path] error:nil];
-//                file[@"fileName"] = [[url path] lastPathComponent];
-//                file[@"width"] = @(model.previewPhoto.size.width);
-//                file[@"height"] = @(model.previewPhoto.size.height);
-//                file[@"size"] = [dictionary objectForKey:NSFileSize];
-//
-//                file[@"duration"] = @(model.videoDuration * 1000);
-//                file[@"mime"] = [self getMimeType:url.path];
-//                BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
-//                file[@"isVideo"] = @(isVideo);
-//                if ([options sy_boolForKey:@"includeBase64"] && model.subType == HXPhotoModelMediaSubTypePhoto) {
-//                    NSData *writeData = model.photoFormat == HXPhotoModelFormatPNG ? UIImagePNGRepresentation(model.previewPhoto) : UIImageJPEGRepresentation(model.previewPhoto, 1);
-//                    file[@"data"] = [NSString stringWithFormat:@"%@", [writeData base64EncodedStringWithOptions:0]];
-//                }
-//                if (mediaType == HXPhotoModelMediaSubTypeVideo) {
-//                    NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:80];
-//                    file[@"coverFileName"] = cover[@"filename"];
-//                    file[@"coverPath"] = cover[@"path"];
-//                    file[@"coverUri"] = cover[@"uri"];
-//                    file[@"coverMime"] = cover[@"mime"];
-//                }
-//                [files addObject:file];
-//                if ([files count] == [allList count]) {
-//					resolve(files);
-//                }
-//            } failed:^(NSDictionary * _Nullable info, HXPhotoModel * _Nullable model) {
-//                reject(@"error", @"error", nil);
-//            }];
-//        }];
-//
-//    } cancel:^(UIViewController *viewController, HXPhotoManager *manager) {
-//        reject(@"cancel", @"cancel", nil);
-//    }];
 }
 
 RCT_REMAP_METHOD(clean,
@@ -251,25 +179,29 @@ RCT_REMAP_METHOD(clean,
 			file[@"width"] = @(model.previewPhoto.size.width);
 			file[@"height"] = @(model.previewPhoto.size.height);
 			file[@"size"] = [dictionary objectForKey:NSFileSize];
-
 			file[@"duration"] = @(model.videoDuration * 1000);
 			file[@"mime"] = [self getMimeType:url.path];
+			
 			BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
+			BOOL isImage = mediaType == HXPhotoModelMediaSubTypePhoto;
+			
+			if (isVideo || isImage) {
+				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:30];
+				file[@"coverFileName"] = cover[@"filename"];
+				file[@"coverPath"] = cover[@"path"];
+				file[@"coverUri"] = cover[@"uri"];
+				file[@"coverMime"] = cover[@"mime"];
+				file[@"coverSize"] = cover[@"size"];
+			}
+			
 			file[@"isVideo"] = @(isVideo);
 			if ([self.pickerOptions sy_boolForKey:@"includeBase64"] && model.subType == HXPhotoModelMediaSubTypePhoto) {
 				NSData *writeData = model.photoFormat == HXPhotoModelFormatPNG ? UIImagePNGRepresentation(model.previewPhoto) : UIImageJPEGRepresentation(model.previewPhoto, 1);
 				file[@"data"] = [NSString stringWithFormat:@"%@", [writeData base64EncodedStringWithOptions:0]];
 			}
-			if (mediaType == HXPhotoModelMediaSubTypeVideo) {
-				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:80];
-				file[@"coverFileName"] = cover[@"filename"];
-				file[@"coverPath"] = cover[@"path"];
-				file[@"coverUri"] = cover[@"uri"];
-				file[@"coverMime"] = cover[@"mime"];
-			}
+			
 			[files addObject:file];
 			if ([files count] == [allList count]) {
-//				[MBProgressHUD hideHUDForView:rootViewController animated:YES];
 				[SVProgressHUD dismiss];
 				self.resolveBlock(files);
 			}
@@ -303,8 +235,23 @@ RCT_REMAP_METHOD(clean,
     } else {
         [filePath appendString:[NSString stringWithFormat:@"%@PhotoPickerModule/%@.jpg", NSTemporaryDirectory(), [filename stringByDeletingPathExtension]]];
     }
+	
+	CGSize imageSize = image.size;//取出要压缩的image尺寸
+	CGFloat width = imageSize.width;    //图片宽度
+	CGFloat height = imageSize.height;  //图片高度
+	
+	CGFloat scale = height / width;
+	width = fmin(width, 200);
+	height = width / scale;
+	
+	UIGraphicsBeginImageContext(CGSizeMake(width, height));
+	[image drawInRect:CGRectMake(0, 0, width, height)];
+	UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+	UIGraphicsEndImageContext();
+	
+	NSData *cacheData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, 1);
     
-    NSData *writeData = isPNG ? UIImagePNGRepresentation(image) : UIImageJPEGRepresentation(image, compressQuality/100);
+	NSData *writeData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, cacheData.length > 60 ? compressQuality/100 : 1);
     [writeData writeToFile:filePath atomically:YES];
     
     NSMutableDictionary *photo = [NSMutableDictionary dictionary];
@@ -313,6 +260,7 @@ RCT_REMAP_METHOD(clean,
     photo[@"uri"] = [[NSURL fileURLWithPath:filePath] absoluteString];
     photo[@"path"] = filePath;
     photo[@"mime"] = [self getMimeType:filePath];
+	photo[@"size"] = @([writeData length]);
     
     return photo;
 }
