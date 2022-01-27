@@ -19,7 +19,7 @@ export interface ExportFile {
   coverPath: string;
   coverMime: string;
   coverFileName: string;
-  coverSize: string;
+  coverSize: number;
   isVideo: boolean;
 }
 
