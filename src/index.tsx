@@ -13,6 +13,7 @@ export interface ExportFile {
   width: number;
   height: number;
   size: number;
+  duration: number;
   mime: string;
   data: string;
   coverUri: string;
