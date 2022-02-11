@@ -176,14 +176,25 @@ RCT_REMAP_METHOD(clean,
 
 			NSDictionary *dictionary = [[NSFileManager defaultManager] attributesOfItemAtPath:[url path] error:nil];
 			file[@"fileName"] = [[url path] lastPathComponent];
-			file[@"width"] = @(model.previewPhoto.size.width);
-			file[@"height"] = @(model.previewPhoto.size.height);
+			
 			file[@"size"] = [dictionary objectForKey:NSFileSize];
 			file[@"duration"] = @(model.videoDuration * 1000);
 			file[@"mime"] = [self getMimeType:url.path];
 			
 			BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
 			BOOL isImage = mediaType == HXPhotoModelMediaSubTypePhoto;
+			
+			if (isVideo) {
+				AVAsset *asset = [AVAsset assetWithURL:url];
+				NSArray *tracks = [asset tracksWithMediaType:AVMediaTypeVideo];
+				AVAssetTrack *videoTrack = tracks[0];
+				CGSize videoSize = CGSizeApplyAffineTransform(videoTrack.naturalSize, videoTrack.preferredTransform);
+				file[@"width"] = @(fabs(videoSize.width));
+				file[@"height"] = @(fabs(videoSize.height));
+			} else {
+				file[@"width"] = @(model.previewPhoto.size.width);
+				file[@"height"] = @(model.previewPhoto.size.height);
+			}
 			
 			if (isVideo || isImage) {
 				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:30];
@@ -242,7 +253,7 @@ RCT_REMAP_METHOD(clean,
 	
 	CGFloat scale = height / width;
 	width = fmin(width, 200);
-	height = width / scale;
+	height = width * scale;
 	
 	UIGraphicsBeginImageContext(CGSizeMake(width, height));
 	[image drawInRect:CGRectMake(0, 0, width, height)];
@@ -251,7 +262,7 @@ RCT_REMAP_METHOD(clean,
 	
 	NSData *cacheData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, 1);
     
-	NSData *writeData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, cacheData.length > 60 ? compressQuality/100 : 1);
+	NSData *writeData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, cacheData.length > 100 ? compressQuality/100 : 1);
     [writeData writeToFile:filePath atomically:YES];
     
     NSMutableDictionary *photo = [NSMutableDictionary dictionary];
