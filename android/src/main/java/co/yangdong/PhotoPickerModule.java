@@ -155,21 +155,21 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                                 Uri uri = Uri.fromFile(file);
 
                                 String mime = isOriginal ? media.getMimeType() : getMimeType(file);
-                                int width =  media.isCut() ? media.getCropImageWidth() : media.getWidth();
-                                int height = media.isCut() ? media.getCropImageHeight() : media.getHeight();
-
                                 data.putString("path", file.getPath());
                                 data.putString("uri", uri.toString());
                                 data.putString("fileName", file.getName());
-                                data.putInt("width", width);
-                                data.putInt("height", height);
                                 data.putDouble("size", file.length());
                                 data.putDouble("duration", media.getDuration());
                                 data.putString("mime", mime);
                                 data.putBoolean("isVideo", PictureMimeType.isHasVideo(media.getMimeType()));
 
                                 if (PictureMimeType.isHasImage(media.getMimeType())) {
+                                    Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+                                    int width = bitmap.getWidth();
+                                    int height = bitmap.getHeight();
                                     File coverFile = getImageCover(file.getPath(), width, height);
+                                    data.putInt("width", width);
+                                    data.putInt("height", height);
                                     data.putString("coverFileName", coverFile.getName());
                                     data.putString("coverPath", coverFile.getPath());
                                     data.putString("coverUri", Uri.fromFile(coverFile).toString());
@@ -179,6 +179,12 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
 
                                 if (PictureMimeType.isHasVideo(media.getMimeType())) {
                                     File coverFile = getVideoCover(file.getPath());
+                                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                                    retriever.setDataSource(file.getPath());
+                                    int width = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+                                    int height = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+                                    data.putInt("width", width);
+                                    data.putInt("height", height);
                                     data.putString("coverFileName", coverFile.getName());
                                     data.putString("coverPath", coverFile.getPath());
                                     data.putString("coverUri", Uri.fromFile(coverFile).toString());
