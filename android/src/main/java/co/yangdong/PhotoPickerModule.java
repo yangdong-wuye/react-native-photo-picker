@@ -1,12 +1,14 @@
 package co.yangdong;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
@@ -22,9 +24,14 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.luck.picture.lib.PictureSelector;
+import com.luck.picture.lib.compress.CompressionPredicate;
+import com.luck.picture.lib.compress.Luban;
+import com.luck.picture.lib.compress.OnCompressListener;
 import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
+import com.luck.picture.lib.engine.CompressEngine;
 import com.luck.picture.lib.entity.LocalMedia;
+import com.luck.picture.lib.listener.OnCallbackListener;
 import com.luck.picture.lib.listener.OnResultCallbackListener;
 import com.luck.picture.lib.manager.PictureCacheManager;
 import com.luck.picture.lib.style.PictureSelectorUIStyle;
@@ -248,14 +255,14 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
 
     private File getImageCover(String imagePath, int width, int height) throws IOException {
         double ratio = (double) width / (double) height;
-        int thumbWidth = Math.min(width, 200);
+        int thumbWidth = Math.min(width, 375);
         int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
         Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(imagePath), thumbWidth, thumbHeight);
         final String uuid = "thumb-" + UUID.randomUUID().toString();
-        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".jpg";
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".png";
         final File file = new File(localThumb);
         FileOutputStream outStream = new FileOutputStream(file);
-        thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outStream);
+        thumbBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
         outStream.close();
 
         return file;
@@ -268,14 +275,14 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
         double ratio = (double) width / (double) height;
-        int thumbWidth = Math.min(width, 200);
+        int thumbWidth = Math.min(width, 375);
         int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
         Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(bitmap, thumbWidth, thumbHeight);
         final String uuid = "thumb-" + UUID.randomUUID().toString();
-        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".jpg";
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".png";
         final File file = new File(localThumb);
         FileOutputStream outStream = new FileOutputStream(file);
-        thumbBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outStream);
+        thumbBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
         outStream.close();
         retriever.release();
 

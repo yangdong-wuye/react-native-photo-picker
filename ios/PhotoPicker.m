@@ -135,7 +135,7 @@ RCT_REMAP_METHOD(clean,
 */
 - (void)photoNavigationViewController:(HXCustomNavigationController *)photoNavigationViewController didDoneAllList:(NSArray<HXPhotoModel *> *)allList photos:(NSArray<HXPhotoModel *> *)photoList videos:(NSArray<HXPhotoModel *> *)videoList original:(BOOL)original {
 	[SVProgressHUD setDefaultStyle:SVProgressHUDStyleDark];
-	[SVProgressHUD showWithStatus:@"文件导出中，请稍后..."];
+	[SVProgressHUD showWithStatus:@"文件处理中，请稍后..."];
 	NSMutableArray *files = [NSMutableArray array];
 	[allList enumerateObjectsUsingBlock:^(HXPhotoModel*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 		NSMutableDictionary *file  = [NSMutableDictionary dictionary];
@@ -197,7 +197,7 @@ RCT_REMAP_METHOD(clean,
 			}
 			
 			if (isVideo || isImage) {
-				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:30];
+				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:100];
 				file[@"coverFileName"] = cover[@"filename"];
 				file[@"coverPath"] = cover[@"path"];
 				file[@"coverUri"] = cover[@"uri"];
@@ -252,7 +252,7 @@ RCT_REMAP_METHOD(clean,
 	CGFloat height = imageSize.height;  //图片高度
 	
 	CGFloat scale = height / width;
-	width = fmin(width, 200);
+	width = fmin(width, 375);
 	height = width * scale;
 	
 	UIGraphicsBeginImageContext(CGSizeMake(width, height));
