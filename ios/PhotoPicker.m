@@ -85,7 +85,6 @@ RCT_REMAP_METHOD(openPicker,
     // 只要裁剪功能
     _manager.configuration.photoEditConfigur.onlyCliping = YES;
     
-    
     if ([options sy_boolForKey:@"isRoundCliping"]) {
         _manager.configuration.photoEditConfigur.aspectRatio = HXPhotoEditAspectRatioType_1x1;
         _manager.configuration.photoEditConfigur.isRoundCliping = true;
@@ -106,7 +105,11 @@ RCT_REMAP_METHOD(openPicker,
         }
     }
     
-    _manager.configuration.requestImageAfterFinishingSelection = YES;
+    _manager.configuration.requestImageAfterFinishingSelection = NO;
+	// 当选择原图时导出最高质量
+	_manager.configuration.exportVideoURLForHighestQuality = YES;
+	// 当原图按钮隐藏时选择原图
+	_manager.configuration.requestOriginalImage = YES;
     
     [_manager clearSelectedList];
 	
@@ -133,13 +136,13 @@ RCT_REMAP_METHOD(clean,
 @param videoList 已选的视频列表
 @param original 是否原图
 */
-- (void)photoNavigationViewController:(HXCustomNavigationController *)photoNavigationViewController didDoneAllList:(NSArray<HXPhotoModel *> *)allList photos:(NSArray<HXPhotoModel *> *)photoList videos:(NSArray<HXPhotoModel *> *)videoList original:(BOOL)original {
+- (void)photoNavigationViewController:(HXCustomNavigationController *)photoNavigationViewController didDoneAllList:(NSArray<HXPhotoModel *> *)allList photos:(NSArray<HXPhotoModel *> *)photoList videos:(NSArray<HXPhotoModel *> *)videoList original:(BOOL)original{
 	[SVProgressHUD setDefaultStyle:SVProgressHUDStyleDark];
 	[SVProgressHUD showWithStatus:@"文件处理中，请稍后..."];
 	NSMutableArray *files = [NSMutableArray array];
 	[allList enumerateObjectsUsingBlock:^(HXPhotoModel*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 		NSMutableDictionary *file  = [NSMutableDictionary dictionary];
-		[obj getAssetURLWithVideoPresetName:nil success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
+		[obj getAssetURLWithVideoPresetName:original ? AVAssetExportPresetHighestQuality : AVAssetExportPresetMediumQuality success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
 			if (obj.subType == HXPhotoModelMediaSubTypePhoto) {
 				NSData *writeData = [NSData dataWithContentsOfURL:url];
 				if ([self.pickerOptions sy_boolForKey:@"isCompress"]) {
