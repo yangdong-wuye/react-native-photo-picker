@@ -149,7 +149,6 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                 .isEnableCrop(photoCanEdit) // 是否开启裁剪功能
                 .rotateEnabled(false) // 禁止旋转
                 .basicUCropConfig(cropOptions) // 配置裁剪
-                .isOriginalImageControl(true) // 启用原图
                 .forResult(new OnResultCallbackListener<LocalMedia>() {
                     @Override
                     public void onResult(List<LocalMedia> result) {
