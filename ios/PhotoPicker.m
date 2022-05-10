@@ -77,6 +77,8 @@ RCT_REMAP_METHOD(openPicker,
     // 是否是单选模式
     _manager.configuration.singleSelected = [options sy_boolForKey:@"singleSelected"];
     _manager.configuration.singleJumpEdit = [options sy_boolForKey:@"singleJumpEdit"];
+	// 当原图按钮隐藏时选择原图
+	_manager.configuration.requestOriginalImage = [options sy_boolForKey:@"singleSelected"];
     
     // 裁剪设置
     _manager.configuration.photoCanEdit = [options sy_boolForKey:@"photoCanEdit"];
@@ -105,11 +107,11 @@ RCT_REMAP_METHOD(openPicker,
         }
     }
     
+	// 不使用完成
     _manager.configuration.requestImageAfterFinishingSelection = NO;
 	// 当选择原图时导出最高质量
 	_manager.configuration.exportVideoURLForHighestQuality = YES;
-	// 当原图按钮隐藏时选择原图
-	_manager.configuration.requestOriginalImage = YES;
+	
     
     [_manager clearSelectedList];
 	
@@ -137,12 +139,13 @@ RCT_REMAP_METHOD(clean,
 @param original 是否原图
 */
 - (void)photoNavigationViewController:(HXCustomNavigationController *)photoNavigationViewController didDoneAllList:(NSArray<HXPhotoModel *> *)allList photos:(NSArray<HXPhotoModel *> *)photoList videos:(NSArray<HXPhotoModel *> *)videoList original:(BOOL)original{
+	BOOL isOriginal = original || _manager.configuration.requestOriginalImage;
 	[SVProgressHUD setDefaultStyle:SVProgressHUDStyleDark];
 	[SVProgressHUD showWithStatus:@"文件处理中，请稍后..."];
 	NSMutableArray *files = [NSMutableArray array];
 	[allList enumerateObjectsUsingBlock:^(HXPhotoModel*  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
 		NSMutableDictionary *file  = [NSMutableDictionary dictionary];
-		[obj getAssetURLWithVideoPresetName:original ? AVAssetExportPresetHighestQuality : AVAssetExportPresetMediumQuality success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
+		[obj getAssetURLWithVideoPresetName:isOriginal ? AVAssetExportPresetHighestQuality : AVAssetExportPresetMediumQuality success:^(NSURL * _Nullable url, HXPhotoModelMediaSubType mediaType, BOOL isNetwork, HXPhotoModel * _Nullable model) {
 			if (obj.subType == HXPhotoModelMediaSubTypePhoto) {
 				NSData *writeData = [NSData dataWithContentsOfURL:url];
 				if ([self.pickerOptions sy_boolForKey:@"isCompress"]) {
@@ -199,8 +202,15 @@ RCT_REMAP_METHOD(clean,
 				file[@"height"] = @(model.previewPhoto.size.height);
 			}
 			
-			if (isVideo || isImage) {
-				NSDictionary *cover = [self handleCoverImage:model.previewPhoto compressQuality:100];
+			if (isImage) {
+				NSDictionary *cover = [self handleCoverImage:obj.previewPhoto compressQuality:100];
+				file[@"coverFileName"] = cover[@"filename"];
+				file[@"coverPath"] = cover[@"path"];
+				file[@"coverUri"] = cover[@"uri"];
+				file[@"coverMime"] = cover[@"mime"];
+				file[@"coverSize"] = cover[@"size"];
+			} else if (isVideo) {
+				NSDictionary *cover = [self handleCoverImage:[self getLocationVideoPreViewImage:url] compressQuality:100];
 				file[@"coverFileName"] = cover[@"filename"];
 				file[@"coverPath"] = cover[@"path"];
 				file[@"coverUri"] = cover[@"uri"];
@@ -286,6 +296,22 @@ RCT_REMAP_METHOD(clean,
     NSHTTPURLResponse *response = nil;
     [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:nil];
     return response.MIMEType;
+}
+
+// 获取本地视频第一帧
+- (UIImage*) getLocationVideoPreViewImage:(NSURL *)path
+{
+	AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:path options:nil];
+	AVAssetImageGenerator *assetGen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+	
+	assetGen.appliesPreferredTrackTransform = YES;
+	CMTime time = CMTimeMakeWithSeconds(0.0, 600);
+	NSError *error = nil;
+	CMTime actualTime;
+	CGImageRef image = [assetGen copyCGImageAtTime:time actualTime:&actualTime error:&error];
+	UIImage *videoImage = [[UIImage alloc] initWithCGImage:image];
+	CGImageRelease(image);
+	return videoImage;
 }
 
 /// 创建PhotoPickerModule缓存目录
