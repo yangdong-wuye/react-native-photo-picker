@@ -7,7 +7,6 @@
 #import <math.h>
 
 
-
 typedef void (^ ImageSuccessBlock)(UIImage * _Nullable image, HXPhotoModel * _Nullable model, NSDictionary * _Nullable info);
 
 @interface PhotoPickerModule ()
@@ -190,6 +189,7 @@ RCT_REMAP_METHOD(clean,
 			file[@"mime"] = [self getMimeType:url.path];
 			
 			BOOL isVideo = mediaType == HXPhotoModelMediaSubTypeVideo;
+			BOOL isImage = mediaType == HXPhotoModelMediaSubTypePhoto;
 			
 			if (isVideo) {
 				AVAsset *asset = [AVAsset assetWithURL:url];
@@ -201,6 +201,23 @@ RCT_REMAP_METHOD(clean,
 			} else {
 				file[@"width"] = @(model.previewPhoto.size.width);
 				file[@"height"] = @(model.previewPhoto.size.height);
+			}
+			
+			BOOL isCover = [self.pickerOptions sy_boolForKey:@"isCover"];
+			if (isImage && isCover) {
+				NSDictionary *cover = [self handleCoverImage:obj.previewPhoto compressQuality:100];
+				file[@"coverFileName"] = cover[@"filename"];
+				file[@"coverPath"] = cover[@"path"];
+				file[@"coverUri"] = cover[@"uri"];
+				file[@"coverMime"] = cover[@"mime"];
+				file[@"coverSize"] = cover[@"size"];
+			} else if (isVideo && isCover) {
+				NSDictionary *cover = [self handleCoverImage:[self getLocationVideoPreViewImage:url] compressQuality:100];
+				file[@"coverFileName"] = cover[@"filename"];
+				file[@"coverPath"] = cover[@"path"];
+				file[@"coverUri"] = cover[@"uri"];
+				file[@"coverMime"] = cover[@"mime"];
+				file[@"coverSize"] = cover[@"size"];
 			}
 			
 			file[@"isVideo"] = @(isVideo);
@@ -230,6 +247,50 @@ RCT_REMAP_METHOD(clean,
 }
 
 
+/// 处理裁剪图片数据
+- (NSDictionary *)handleCoverImage:(UIImage *)image compressQuality:(CGFloat)compressQuality {
+    [self createDir];
+    
+    NSString *filename = [NSString stringWithFormat:@"%@%@", [[NSUUID UUID] UUIDString], @".png"];
+    NSString *fileExtension = [filename pathExtension];
+    NSMutableString *filePath = [NSMutableString string];
+    BOOL isPNG = [fileExtension hasSuffix:@"PNG"] || [fileExtension hasSuffix:@"png"];
+    
+    if (isPNG) {
+        [filePath appendString:[NSString stringWithFormat:@"%@PhotoPickerModule/%@", NSTemporaryDirectory(), filename]];
+    } else {
+        [filePath appendString:[NSString stringWithFormat:@"%@PhotoPickerModule/%@.jpg", NSTemporaryDirectory(), [filename stringByDeletingPathExtension]]];
+    }
+	
+	CGSize imageSize = image.size;//取出要压缩的image尺寸
+	CGFloat width = imageSize.width;    //图片宽度
+	CGFloat height = imageSize.height;  //图片高度
+	
+	CGFloat scale = height / width;
+	width = fmin(width, 375);
+	height = width * scale;
+	
+	UIGraphicsBeginImageContext(CGSizeMake(width, height));
+	[image drawInRect:CGRectMake(0, 0, width, height)];
+	UIImage* newImage = UIGraphicsGetImageFromCurrentImageContext();
+	UIGraphicsEndImageContext();
+	
+	NSData *cacheData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, 1);
+    
+	NSData *writeData = isPNG ? UIImagePNGRepresentation(newImage) : UIImageJPEGRepresentation(newImage, cacheData.length > 100 ? compressQuality/100 : 1);
+    [writeData writeToFile:filePath atomically:YES];
+    
+    NSMutableDictionary *photo = [NSMutableDictionary dictionary];
+    
+    photo[@"filename"] = filename;
+    photo[@"uri"] = [[NSURL fileURLWithPath:filePath] absoluteString];
+    photo[@"path"] = filePath;
+    photo[@"mime"] = [self getMimeType:filePath];
+	photo[@"size"] = @([writeData length]);
+    
+    return photo;
+}
+
 /// 获取文件的 mime type
 - (NSString *)getMimeType:(NSString *) path{
     NSURL *url = [NSURL fileURLWithPath:path];
@@ -237,6 +298,36 @@ RCT_REMAP_METHOD(clean,
     NSHTTPURLResponse *response = nil;
     [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:nil];
     return response.MIMEType;
+}
+
+// 获取本地视频第一帧
+- (UIImage*) getLocationVideoPreViewImage:(NSURL *)path
+{
+	AVURLAsset *asset = [[AVURLAsset alloc] initWithURL:path options:nil];
+	AVAssetImageGenerator *assetGen = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+	
+	assetGen.appliesPreferredTrackTransform = YES;
+	CMTime time = CMTimeMakeWithSeconds(0.0, 600);
+	NSError *error = nil;
+	CMTime actualTime;
+	CGImageRef image = [assetGen copyCGImageAtTime:time actualTime:&actualTime error:&error];
+	UIImage *videoImage = [[UIImage alloc] initWithCGImage:image];
+	CGImageRelease(image);
+	return videoImage;
+}
+
+/// 创建PhotoPickerModule缓存目录
+- (BOOL)createDir {
+    NSString * path = [NSString stringWithFormat:@"%@PhotoPickerModule", NSTemporaryDirectory()];;
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL isDir;
+    if(![fileManager fileExistsAtPath:path isDirectory:&isDir]) {
+        //先判断目录是否存在，不存在才创建
+        BOOL res = [fileManager createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
+        return res;
+    } else {
+        return NO;
+    };
 }
 
 - (NSData *)smartCompressImage:(UIImage *)sourceImage minimumCompressSize:(NSInteger)minimumCompressSize compressQuality:(CGFloat) compressQuality {
@@ -290,19 +381,6 @@ RCT_REMAP_METHOD(clean,
     return data;
 }
 
-/// 创建PhotoPickerModule缓存目录
-- (BOOL)createDir {
-	NSString * path = [NSString stringWithFormat:@"%@PhotoPickerModule", NSTemporaryDirectory()];;
-	NSFileManager *fileManager = [NSFileManager defaultManager];
-	BOOL isDir;
-	if(![fileManager fileExistsAtPath:path isDirectory:&isDir]) {
-		//先判断目录是否存在，不存在才创建
-		BOOL res = [fileManager createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
-		return res;
-	} else {
-		return NO;
-	};
-}
 
 + (BOOL)requiresMainQueueSetup
 {

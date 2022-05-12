@@ -1,11 +1,14 @@
 package co.yangdong;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
+import android.media.ThumbnailUtils;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
@@ -21,9 +24,14 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.luck.picture.lib.PictureSelector;
+import com.luck.picture.lib.compress.CompressionPredicate;
+import com.luck.picture.lib.compress.Luban;
+import com.luck.picture.lib.compress.OnCompressListener;
 import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
+import com.luck.picture.lib.engine.CompressEngine;
 import com.luck.picture.lib.entity.LocalMedia;
+import com.luck.picture.lib.listener.OnCallbackListener;
 import com.luck.picture.lib.listener.OnResultCallbackListener;
 import com.luck.picture.lib.manager.PictureCacheManager;
 import com.luck.picture.lib.style.PictureSelectorUIStyle;
@@ -35,11 +43,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.FileNameMap;
 import java.net.URLConnection;
 import java.util.List;
+import java.util.UUID;
 
 public class PhotoPickerModule extends ReactContextBaseJavaModule {
     public static final String NAME = "PhotoPickerModule";
@@ -84,6 +94,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         int cropHeightRatio = options.getInt("cropHeightRatio");
         boolean customCropRatio = options.getBoolean("customCropRatio");
         boolean includeBase64 = options.getBoolean("includeBase64");
+        boolean isCover = options.getBoolean("isCover");
         ReadableArray mimeTypeConditions = options.getArray("mimeTypeConditions");
 
         UCrop.Options cropOptions = new UCrop.Options();
@@ -166,6 +177,14 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                                     int height = bitmap.getHeight();
                                     data.putInt("width", width);
                                     data.putInt("height", height);
+                                    if (isCover) {
+                                        File coverFile = getImageCover(file.getPath(), width, height);
+                                        data.putString("coverFileName", coverFile.getName());
+                                        data.putString("coverPath", coverFile.getPath());
+                                        data.putString("coverUri", Uri.fromFile(coverFile).toString());
+                                        data.putString("coverMime", getMimeType(coverFile));
+                                        data.putDouble("coverSize", coverFile.length());
+                                    }
                                 }
 
                                 if (PictureMimeType.isHasVideo(media.getMimeType())) {
@@ -175,6 +194,15 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                                     int height = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
                                     data.putInt("width", width);
                                     data.putInt("height", height);
+                                    if (isCover) {
+                                        File coverFile = getVideoCover(file.getPath());
+                                        data.putString("coverFileName", coverFile.getName());
+                                        data.putString("coverPath", coverFile.getPath());
+                                        data.putString("coverUri", Uri.fromFile(coverFile).toString());
+                                        data.putString("coverMime", getMimeType(coverFile));
+                                        data.putDouble("coverSize", coverFile.length());
+                                    }
+                                    
                                 }
 
                                 if (includeBase64) {
@@ -229,6 +257,42 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         }
         bytes = output.toByteArray();
         return Base64.encodeToString(bytes, Base64.NO_WRAP);
+    }
+
+    private File getImageCover(String imagePath, int width, int height) throws IOException {
+        double ratio = (double) width / (double) height;
+        int thumbWidth = Math.min(width, 375);
+        int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
+        Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(BitmapFactory.decodeFile(imagePath), thumbWidth, thumbHeight);
+        final String uuid = "thumb-" + UUID.randomUUID().toString();
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".png";
+        final File file = new File(localThumb);
+        FileOutputStream outStream = new FileOutputStream(file);
+        thumbBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
+        outStream.close();
+
+        return file;
+    }
+
+    private File getVideoCover(String videoPath) throws IOException {
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(videoPath);
+        Bitmap bitmap = retriever.getFrameAtTime();
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        double ratio = (double) width / (double) height;
+        int thumbWidth = Math.min(width, 375);
+        int thumbHeight = Double.valueOf(thumbWidth / ratio).intValue();
+        Bitmap thumbBitmap = ThumbnailUtils.extractThumbnail(bitmap, thumbWidth, thumbHeight);
+        final String uuid = "thumb-" + UUID.randomUUID().toString();
+        final String localThumb = reactContext.getExternalCacheDir().getAbsolutePath() + "/" + uuid + ".png";
+        final File file = new File(localThumb);
+        FileOutputStream outStream = new FileOutputStream(file);
+        thumbBitmap.compress(Bitmap.CompressFormat.PNG, 100, outStream);
+        outStream.close();
+        retriever.release();
+
+        return file;
     }
 
     private String getMimeType(File file) {

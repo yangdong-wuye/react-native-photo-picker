@@ -16,6 +16,11 @@ export interface ExportFile {
   duration: number;
   mime: string;
   data: string;
+  coverUri: string;
+  coverPath: string;
+  coverMime: string;
+  coverFileName: string;
+  coverSize: number;
   isVideo: boolean;
 }
 
@@ -127,6 +132,8 @@ export interface PhotoPickerOptions {
 
   // 是否可以编辑视频
   videoCanEdit?: boolean;
+
+  isCover?: boolean;
 }
 
 const { PhotoPickerModule } = NativeModules;
@@ -169,6 +176,7 @@ const PhotoPciker = {
       includeBase64: false,
 
       mimeTypeConditions: [],
+      isCover: true,
     };
 
     return PhotoPickerModule.openPicker({ ...defaultOptions, ...options });
