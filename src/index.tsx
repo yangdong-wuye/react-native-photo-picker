@@ -136,6 +136,104 @@ export interface PhotoPickerOptions {
   isCover?: boolean;
 }
 
+export enum ScreenOrientation {
+  SCREEN_ORIENTATION_UNSPECIFIED = -1,
+  SCREEN_ORIENTATION_LANDSCAPE,
+  SCREEN_ORIENTATION_PORTRAIT,
+  SCREEN_ORIENTATION_USER,
+  SCREEN_ORIENTATION_BEHIND,
+  SCREEN_ORIENTATION_SENSOR,
+  SCREEN_ORIENTATION_NOSENSOR,
+  SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+  SCREEN_ORIENTATION_SENSOR_PORTRAIT,
+  SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
+  SCREEN_ORIENTATION_REVERSE_PORTRAIT,
+  SCREEN_ORIENTATION_FULL_SENSOR,
+  SCREEN_ORIENTATION_USER_LANDSCAPE,
+  SCREEN_ORIENTATION_USER_PORTRAIT,
+  SCREEN_ORIENTATION_FULL_USER,
+  SCREEN_ORIENTATION_LOCKED,
+}
+
+export interface GalleryOptions {
+  type?: PickerType;
+  maxNum?: number;
+  videoMaxNum?: number;
+  openCamera?: boolean;
+  lookGifPhoto?: boolean;
+  selectTogether?: boolean;
+  maxFileSize?: number;
+  videoMaximumDuration?: number;
+  videoMinimumDuration?: number;
+  videoMaximumSelectDuration?: number;
+  videoMinimumSelectDuration?: number;
+  videoQuality?: 0 | 1;
+  singleSelected?: boolean;
+  singleDirectReturn?: boolean;
+  isOriginalImageControl?: boolean;
+  mimeTypeConditions?: (
+    | 'image/png'
+    | 'image/jpeg'
+    | 'image/jpg'
+    | 'image/bmp'
+    | 'image/gif'
+    | 'image/webp'
+  )[];
+}
+
+export interface GalleryFile {
+  path: string;
+  uri: string;
+  fileName: string;
+  size: number;
+  width: number;
+  height: number;
+  duration: number;
+  mime: string;
+}
+
+export interface CropOptions {
+  maxResultSize?: { width: number; height: number };
+  aspectRatio?: { x: number; y: number };
+  customCropRatio?: boolean;
+  compressionFormat?: 'PNG' | 'JPEG' | 'WEBP';
+  compressionQuality?: number;
+  requestedOrientation?: ScreenOrientation;
+  dimmedLayerColor?: string;
+  dimmedLayerBorderColor?: string;
+  circleStrokeWidth?: number;
+  isCircle?: boolean;
+  showCropFrame?: boolean;
+  cropFrameColor?: string;
+  cropFrameStrokeWidth?: number;
+  showCropGrid?: boolean;
+  dragFrameEnabled?: boolean;
+  cropGridRowCount?: number;
+  scaleEnabled?: number;
+  rotateEnabled?: boolean;
+  cropGridColumnCount?: number;
+  cropGridColor?: string;
+  cropGridStrokeWidth?: number;
+  toolbarColor?: string;
+  isOpenWhiteStatusBar?: boolean;
+  statusBarColor?: string;
+  activeWidgetColor?: string;
+  activeControlsWidgetColor?: string;
+  toolbarWidgetColor?: string;
+  toolbarTitle?: string;
+  logoColor?: string;
+  editorImage?: boolean;
+  hideBottomControls?: boolean;
+  cropDragSmoothToCenter?: boolean;
+  navBarColor?: string;
+  rootViewBackgroundColor?: string;
+}
+
+export interface CropResult {
+  uri: string;
+  path: string;
+}
+
 const { PhotoPickerModule } = NativeModules;
 
 const PhotoPciker = {
@@ -181,7 +279,31 @@ const PhotoPciker = {
 
     return PhotoPickerModule.openPicker({ ...defaultOptions, ...options });
   },
+  openGallery: (options: GalleryOptions): Promise<GalleryFile[]> => {
+    const defaultOptions: GalleryOptions = {
+      type: 0,
+      maxNum: 9,
+      videoMaxNum: 1,
+      openCamera: true,
+      lookGifPhoto: true,
+      selectTogether: false,
+      maxFileSize: 1024 * 1024 * 50,
+      videoMaximumSelectDuration: 60,
+      videoMinimumSelectDuration: 0,
+      videoMaximumDuration: 60,
+      videoMinimumDuration: 3,
+      videoQuality: 0,
+      singleSelected: false,
+      singleDirectReturn: false,
+      mimeTypeConditions: [],
+    };
+    return PhotoPickerModule.openGallery({ ...defaultOptions, ...options });
+  },
+  openCrop: (path: string, options: CropOptions): Promise<CropResult> =>
+    PhotoPickerModule.openCrop(path, options),
   clean: () => PhotoPickerModule.clean(),
+  getFileInfo: (path: string): Promise<GalleryFile> =>
+    PhotoPickerModule.getFileInfo(path),
 };
 
 export default PhotoPciker;

@@ -1,18 +1,20 @@
 package co.yangdong;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.app.Activity;
-import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
-import android.text.TextUtils;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -24,14 +26,10 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.luck.picture.lib.PictureSelector;
-import com.luck.picture.lib.compress.CompressionPredicate;
-import com.luck.picture.lib.compress.Luban;
-import com.luck.picture.lib.compress.OnCompressListener;
 import com.luck.picture.lib.config.PictureConfig;
 import com.luck.picture.lib.config.PictureMimeType;
-import com.luck.picture.lib.engine.CompressEngine;
+import com.luck.picture.lib.config.PictureSelectionConfig;
 import com.luck.picture.lib.entity.LocalMedia;
-import com.luck.picture.lib.listener.OnCallbackListener;
 import com.luck.picture.lib.listener.OnResultCallbackListener;
 import com.luck.picture.lib.manager.PictureCacheManager;
 import com.luck.picture.lib.style.PictureSelectorUIStyle;
@@ -54,11 +52,12 @@ import java.util.UUID;
 public class PhotoPickerModule extends ReactContextBaseJavaModule {
     public static final String NAME = "PhotoPickerModule";
 
-    private ReactContext reactContext;
+    private final ReactContext reactContext;
 
     public PhotoPickerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+
     }
 
     @Override
@@ -68,6 +67,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
     }
 
 
+    @SuppressWarnings("unused")
     @ReactMethod
     public void openPicker(ReadableMap options, Promise promise) {
         int type = options.getInt("type");
@@ -157,7 +157,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                             WritableArray list = Arguments.createArray();
                             for (LocalMedia media : result) {
                                 WritableMap data = Arguments.createMap();
-                                String path = media.isCompressed() ?  media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getRealPath();
+                                String path = media.isCompressed() ? media.getCompressPath() : media.isCut() ? media.getCutPath() : media.getRealPath();
                                 boolean isOriginal = !media.isCompressed() && !media.isCut();
                                 File file = new File(path);
                                 Uri uri = Uri.fromFile(file);
@@ -202,7 +202,7 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                                         data.putString("coverMime", getMimeType(coverFile));
                                         data.putDouble("coverSize", coverFile.length());
                                     }
-                                    
+
                                 }
 
                                 if (includeBase64) {
@@ -226,7 +226,147 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
                 });
     }
 
+    @SuppressWarnings("unused")
+    @ReactMethod
+    public void openGallery(final ReadableMap options, final Promise promise) {
+        Activity currentActivity = this.getCurrentActivity();
+        if (currentActivity != null) {
+            int type = options.getInt("type");
+            int maxNum = options.getInt("maxNum");
+            int videoMaxNum = options.getInt("videoMaxNum");
+            boolean openCamera = options.getBoolean("openCamera");
+            boolean lookGifPhoto = options.getBoolean("lookGifPhoto");
+            boolean selectTogether = options.getBoolean("selectTogether");
+            int maxFileSize = options.getInt("maxFileSize");
+            int videoMaximumDuration = options.getInt("videoMaximumDuration");
+            int videoMinimumDuration = options.getInt("videoMinimumDuration");
+            int videoMaximumSelectDuration = options.getInt("videoMaximumSelectDuration"); // 视频最大选择时间
+            int videoMinimumSelectDuration = options.getInt("videoMinimumSelectDuration"); // 视频最小选择时间
+            int videoQuality = options.getInt("videoQuality"); // 视频录制质量
+            boolean singleSelected = options.getBoolean("singleSelected");
+            boolean singleDirectReturn = options.getBoolean("singleDirectReturn");
+            boolean isOriginalImageControl = options.getBoolean("isOriginalImageControl"); // 是否开启原图
+            boolean isCompress = options.getBoolean("isCompress"); // 是否压缩
+            int compressQuality = options.getInt("compressQuality"); // 压缩质量
+            boolean isEnableCrop = options.getBoolean("isEnableCrop"); // 是否开启裁剪
+            ReadableArray mimeTypeConditions = options.getArray("mimeTypeConditions");
 
+            int[] pictureMimeType = {PictureMimeType.ofImage(), PictureMimeType.ofVideo(), PictureMimeType.ofAll()};
+            PictureSelector.create(currentActivity)
+                    .openGallery(pictureMimeType[type])
+                    .queryMimeTypeConditions(mimeTypeConditions.toArrayList().toArray(new String[]{}))
+                    .setPictureUIStyle(PictureSelectorUIStyle.ofNewStyle())
+                    .maxSelectNum(maxNum) // 最大图片选择数量
+                    .minSelectNum(0) // 最小选择数量
+                    .maxVideoSelectNum(videoMaxNum) // 视频最大选择数量，如果没有单独设置的需求则可以不设置，同用maxSelectNum字段
+                    .minVideoSelectNum(0) // 视频最小选择数量，如果没有单独设置的需求则可以不设置，同用minSelectNum字段
+                    .isCamera(openCamera) // 是否显示拍照按钮
+                    .isGif(lookGifPhoto) // 是否显示gif
+                    .isWithVideoImage(selectTogether) // 图片和视频是否可以同选,只在ofAll模式下有效
+                    .filterMinFileSize(0) // 过滤最小的文件
+                    .filterMaxFileSize(maxFileSize) // 过滤最大的文件
+                    .recordVideoSecond(videoMaximumDuration) // 录制视频秒数 默认60s
+                    .recordVideoMinSecond(videoMinimumDuration) // 最低录制秒数
+                    .videoMaxSecond(videoMaximumSelectDuration) // 查询多少秒以内的视频
+                    .videoMinSecond(videoMinimumSelectDuration) // 查询多少秒以外的视频
+                    .videoQuality(videoQuality)
+                    .selectionMode(singleSelected ? PictureConfig.SINGLE : PictureConfig.MULTIPLE) // 多选 or 单选
+                    .isSingleDirectReturn(singleDirectReturn) // 单选模式下是否直接返回，PictureConfig.SINGLE模式下有效
+                    .isOriginalImageControl(isOriginalImageControl) // 是否开启原图
+                    .isCompress(isCompress) // 是否压缩
+                    .compressQuality(compressQuality)
+                    .isEnableCrop(isEnableCrop) // 是否开启裁剪功能
+                    .isPreviewImage(true) // 是否可预览图片
+                    .isPreviewVideo(true) // 是否可预览视频
+                    .imageSpanCount(4) // 每行显示个数
+                    .isReturnEmpty(false) // 未选择数据时点击按钮是否可以返回
+                    .isEnablePreviewAudio(false) // 是否可播放音频
+                    .isOpenClickSound(false) // 是否开启点击声音
+                    .isMaxSelectEnabledMask(true) //选择条件达到阀时列表是否启用蒙层效果
+                    .imageEngine(GlideEngine.createGlideEngine()) // 外部传入图片加载引擎，必传项
+                    .isUseCustomCamera(true) // 是否使用自定义相机
+                    .setPictureWindowAnimationStyle(new PictureWindowAnimationStyle()) // 自定义相册启动退出动画
+                    .setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) // 设置相册Activity方向，不设置默认使用系统
+                    .forResult(new OnResultCallbackListener<LocalMedia>() {
+                        @Override
+                        public void onResult(List<LocalMedia> result) {
+                            try {
+                                WritableArray list = Arguments.createArray();
+                                for (LocalMedia media : result) {
+                                    WritableMap data = Arguments.createMap();
+                                    String path = media.getRealPath();
+                                    File file = new File(path);
+                                    Uri uri = Uri.fromFile(file);
+
+                                    data.putString("path", file.getPath());
+                                    data.putString("uri", uri.toString());
+                                    data.putString("fileName", file.getName());
+                                    data.putDouble("size", file.length());
+                                    data.putDouble("width", media.getWidth());
+                                    data.putDouble("height", media.getHeight());
+                                    data.putDouble("duration", media.getDuration());
+                                    data.putString("mime", media.getMimeType());
+                                    list.pushMap(data);
+                                }
+
+                                promise.resolve(list);
+                            } catch (Exception ex) {
+                                promise.reject(ex);
+                            }
+
+                        }
+
+                        @Override
+                        public void onCancel() {
+                            promise.reject("cancel", new Exception("cancel"));
+                        }
+                    });
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @ReactMethod
+    public void openCrop(final String path, final ReadableMap options, final Promise promise) {
+        Activity currentActivity = this.getCurrentActivity();
+        if (currentActivity != null) {
+            ActivityEventListener listener = new ActivityEventListener() {
+                @Override
+                public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+                    if (resultCode == RESULT_OK && requestCode == UCrop.REQUEST_CROP) {
+                        final Uri resultUri = UCrop.getOutput(data);
+                        WritableMap result = Arguments.createMap();
+                        result.putString("uri", resultUri.toString());
+                        result.putString("path", resultUri.getPath());
+                        promise.resolve(result);
+                    } else if (resultCode == UCrop.RESULT_ERROR) {
+                        final Throwable cropError = UCrop.getError(data);
+                        promise.reject(cropError);
+                    }
+                }
+
+                @Override
+                public void onNewIntent(Intent intent) {
+
+                }
+            };
+            reactContext.removeActivityEventListener(listener);
+            reactContext.addActivityEventListener(listener);
+
+            try {
+                File file = new File(path);
+                String fileName = file.getName();
+                File newFile = new File(reactContext.getApplicationContext().getExternalCacheDir(), "IMG_CROP_" + fileName);
+                UCrop builder = UCrop.of(Uri.fromFile(file), Uri.fromFile(newFile));
+                builder.withOptions(Utils.getCropOptions(options));
+                builder.startAnimationActivity(currentActivity, PictureSelectionConfig.windowAnimationStyle.activityCropEnterAnimation);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                promise.reject(ex);
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
     @ReactMethod
     public void clean() {
         Activity activity = getCurrentActivity();
@@ -235,10 +375,49 @@ public class PhotoPickerModule extends ReactContextBaseJavaModule {
         }
     }
 
+    @SuppressWarnings("unused")
+    @ReactMethod
+    public void getFileInfo(final String path, Promise promise) {
+        try {
+            WritableMap data = Arguments.createMap();
+            File file = new File(path);
+            String mime = getMimeType(file);
+            int width = 0;
+            int height = 0;
+            long duration = 0;
+            if (PictureMimeType.isHasImage(mime)) {
+                Bitmap bitmap = BitmapFactory.decodeFile(file.getPath());
+                width = bitmap.getWidth();
+                height = bitmap.getHeight();
+            }
+
+            if (PictureMimeType.isHasVideo(mime) || PictureMimeType.isHasAudio(mime)) {
+                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                retriever.setDataSource(file.getPath());
+                width = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+                height = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+                duration = Long.parseLong(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+            }
+
+            data.putString("path", path);
+            data.putString("uri", Uri.fromFile(file).toString());
+            data.putString("fileName", file.getName());
+            data.putDouble("size", file.length());
+            data.putInt("width", width);
+            data.putInt("height", height);
+            data.putDouble("duration", duration);
+            data.putString("mime", mime);
+            promise.resolve(data);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            promise.reject(ex);
+        }
+    }
+
     private String getBase64StringFromFilePath(String absoluteFilePath) {
         InputStream inputStream;
         try {
-            inputStream = new FileInputStream(new File(absoluteFilePath));
+            inputStream = new FileInputStream(absoluteFilePath);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             return null;
